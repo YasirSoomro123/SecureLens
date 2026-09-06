@@ -1,11 +1,5 @@
 # SecureLens - Automated Secure Code Review & Vulnerability Detector
 
-> **Final Year Project (FYP)**  
-> **Developer:** Muhammad Yasir Soomro  
-> **Registration:** ARZ-2026-2LPS  
-
----
-
 ## Overview
 
 SecureLens is a Static Application Security Testing (SAST) tool that automatically scans source code to identify security vulnerabilities, hardcoded secrets, injection flaws, weak cryptography, and security misconfigurations. It provides developers with detailed, actionable security reports before code goes live.
