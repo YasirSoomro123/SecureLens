@@ -1,0 +1,140 @@
+from typing import List
+from scanner.base import BaseScanner
+from scanner.models import Finding
+
+
+class MisconfigurationScanner(BaseScanner):
+    name = "MisconfigurationScanner"
+    category = "Security Misconfiguration"
+
+    PATTERNS = [
+        {
+            "pattern": r'''(?i)debug\s*=\s*True''',
+            "vulnerability": "Debug Mode Enabled",
+            "severity": "high",
+            "confidence": "high",
+            "description": "Debug mode is enabled in the application. In production, debug mode exposes stack traces, internal paths, and can allow arbitrary code execution.",
+            "remediation": "Set debug=False in production. Use environment variables to control debug mode: debug=os.environ.get('DEBUG', 'False')",
+            "owasp_ref": "A05:2021 - Security Misconfiguration",
+            "cwe_id": "CWE-215",
+        },
+        {
+            "pattern": r'''(?i)app\.run\s*\([^)]*debug\s*=\s*True''',
+            "vulnerability": "Flask Debug Mode in Production",
+            "severity": "critical",
+            "confidence": "high",
+            "description": "Flask application running with debug=True. The Werkzeug debugger allows remote code execution in debug mode.",
+            "remediation": "Remove debug=True before deployment. Use FLASK_DEBUG=0 in production environment.",
+            "owasp_ref": "A05:2021 - Security Misconfiguration",
+            "cwe_id": "CWE-215",
+        },
+        {
+            "pattern": r'''(?i)CORS\s*\(\s*app\s*,?\s*resources\s*=\s*\{.*origins\s*:\s*["']\*["']''',
+            "vulnerability": "Overly Permissive CORS",
+            "severity": "medium",
+            "confidence": "high",
+            "description": "CORS is configured to allow requests from any origin (*). This can allow malicious websites to make authenticated requests to your API.",
+            "remediation": "Restrict CORS origins to specific trusted domains. Use a whitelist of allowed origins.",
+            "owasp_ref": "A05:2021 - Security Misconfiguration",
+            "cwe_id": "CWE-942",
+        },
+        {
+            "pattern": r'''(?i)Access-Control-Allow-Origin\s*[:=]\s*["']\*["']''',
+            "vulnerability": "Permissive CORS Header",
+            "severity": "medium",
+            "confidence": "high",
+            "description": "Access-Control-Allow-Origin is set to wildcard (*). Any website can make cross-origin requests to this server.",
+            "remediation": "Set Access-Control-Allow-Origin to specific trusted domains, not wildcard.",
+            "owasp_ref": "A05:2021 - Security Misconfiguration",
+            "cwe_id": "CWE-942",
+        },
+        {
+            "pattern": r'''(?i)(?:SECRET_KEY|JWT_SECRET)\s*[=:]\s*["'](?:secret|password|admin|test|changeme|default)["']''',
+            "vulnerability": "Weak Secret Key",
+            "severity": "critical",
+            "confidence": "high",
+            "description": "A weak, easily guessable secret key is being used. Default/common secret values can be brute-forced or found in attacker dictionaries.",
+            "remediation": "Generate a strong random secret key: python -c 'import secrets; print(secrets.token_hex(32))'. Store it in an environment variable.",
+            "owasp_ref": "A02:2021 - Cryptographic Failures",
+            "cwe_id": "CWE-326",
+        },
+        {
+            "pattern": r'''(?i)(?:allowed_hosts|ALLOWED_HOSTS)\s*[=:]\s*\[?\s*["']\*["']''',
+            "vulnerability": "Wildcard Allowed Hosts",
+            "severity": "medium",
+            "confidence": "high",
+            "description": "ALLOWED_HOSTS is set to wildcard (*), allowing requests to any hostname. This enables Host header attacks.",
+            "remediation": "Set ALLOWED_HOSTS to specific domain names: ALLOWED_HOSTS = ['example.com', 'www.example.com']",
+            "owasp_ref": "A05:2021 - Security Misconfiguration",
+            "cwe_id": "CWE-644",
+        },
+        {
+            "pattern": r'''(?i)(?:SESSION_COOKIE_SECURE\s*=\s*False|csrf_enabled\s*=\s*False|WTF_CSRF_ENABLED\s*=\s*False)''',
+            "vulnerability": "Security Feature Disabled",
+            "severity": "high",
+            "confidence": "high",
+            "description": "An important security feature (secure cookies or CSRF protection) is explicitly disabled.",
+            "remediation": "Enable SESSION_COOKIE_SECURE=True, CSRF protection, and other security features. These protect against session hijacking and CSRF attacks.",
+            "owasp_ref": "A05:2021 - Security Misconfiguration",
+            "cwe_id": "CWE-215",
+        },
+        {
+            "pattern": r'''(?i)(?:SESSION_COOKIE_HTTPONLY\s*=\s*False|SESSION_COOKIE_SAMESITE\s*=\s*None)''',
+            "vulnerability": "Insecure Session Cookie Configuration",
+            "severity": "medium",
+            "confidence": "high",
+            "description": "Session cookies are not configured with HttpOnly or SameSite flags. This makes them accessible to JavaScript and vulnerable to XSS-based session theft.",
+            "remediation": "Set SESSION_COOKIE_HTTPONLY=True and SESSION_COOKIE_SAMESITE='Lax' to protect session cookies.",
+            "owasp_ref": "A05:2021 - Security Misconfiguration",
+            "cwe_id": "CWE-1004",
+        },
+        {
+            "pattern": r'''(?i)NODE_ENV\s*[=:]\s*["']development["']''',
+            "vulnerability": "Development Environment in Production",
+            "severity": "medium",
+            "confidence": "low",
+            "description": "NODE_ENV is set to 'development'. Development mode may expose debug information, stack traces, and disable optimizations.",
+            "remediation": "Set NODE_ENV=production in production deployments. Use environment-specific configuration files.",
+            "owasp_ref": "A05:2021 - Security Misconfiguration",
+            "cwe_id": "CWE-215",
+        },
+        {
+            "pattern": r'''(?i)(?:app\.use\s*\(\s*.*logger\s*\(\s*["']dev["']\s*\))''',
+            "vulnerability": "Verbose Logging in Production",
+            "severity": "low",
+            "confidence": "low",
+            "description": "Verbose development logging ('dev' format) may expose sensitive information in logs.",
+            "remediation": "Use a structured logging configuration appropriate for production. Avoid logging sensitive data.",
+            "owasp_ref": "A09:2021 - Security Logging and Monitoring Failures",
+            "cwe_id": "CWE-532",
+        },
+        {
+            "pattern": r'''(?i)(?:app\.listen\s*\(\s*\d+\s*,\s*["']0\.0\.0\.0["']\s*\)|\.listen\s*\(\s*\d+\s*,\s*["']0\.0\.0\.0["']\s*\))''',
+            "vulnerability": "Server Binding to All Interfaces",
+            "severity": "medium",
+            "confidence": "medium",
+            "description": "Server is bound to 0.0.0.0 (all network interfaces). This exposes the service to all networks, including public ones.",
+            "remediation": "Bind to 127.0.0.1 (localhost) and use a reverse proxy (nginx) for external access. Or bind to a specific internal interface.",
+            "owasp_ref": "A05:2021 - Security Misconfiguration",
+            "cwe_id": "CWE-668",
+        },
+        {
+            "pattern": r'''(?i)(?:TRUSTED_PROXIES\s*=\s*["']\*["']|trust_proxy\s*=\s*True)''',
+            "vulnerability": "Trusting All Proxies",
+            "severity": "medium",
+            "confidence": "medium",
+            "description": "The application trusts all proxy headers. Attackers can spoof X-Forwarded-For and other headers to bypass IP-based security controls.",
+            "remediation": "Configure specific trusted proxy IPs. Only trust headers from known load balancers/reverse proxies.",
+            "owasp_ref": "A05:2021 - Security Misconfiguration",
+            "cwe_id": "CWE-290",
+        },
+    ]
+
+    def scan_file(self, file_path: str, content: str, language: str) -> List[Finding]:
+        return self._search_patterns(
+            self.PATTERNS, content, file_path, language,
+            "Security Misconfiguration", "medium",
+            "Security misconfiguration detected that could expose the application to attacks.",
+            "Follow security hardening guidelines. Disable debug features in production.",
+            "A05:2021 - Security Misconfiguration", "CWE-215",
+        )

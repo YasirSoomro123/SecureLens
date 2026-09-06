@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Security Scan Report - {{ result.scan_id }}</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; color: #1a1a2e; line-height: 1.6; }
+        .report-header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); color: white; padding: 40px; text-align: center; }
+        .report-header h1 { font-size: 28px; margin-bottom: 8px; }
+        .report-header p { opacity: 0.8; font-size: 14px; }
+        .report-header .brand { font-size: 18px; font-weight: 700; letter-spacing: 1px; margin-bottom: 16px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .container { max-width: 1000px; margin: 0 auto; padding: 24px; }
+        .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; margin: 24px 0; }
+        .summary-card { background: white; border-radius: 12px; padding: 20px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+        .summary-card .number { font-size: 32px; font-weight: 800; }
+        .summary-card .label { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #666; margin-top: 4px; }
+        .critical .number { color: #dc2626; }
+        .high .number { color: #ea580c; }
+        .medium .number { color: #d97706; }
+        .low .number { color: #2563eb; }
+        .info .number { color: #6b7280; }
+        .total .number { color: #1a1a2e; }
+        .meta-section { background: white; border-radius: 12px; padding: 24px; margin: 24px 0; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+        .meta-section h3 { margin-bottom: 12px; color: #1a1a2e; }
+        .meta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+        .meta-item { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+        .meta-item strong { color: #1a1a2e; }
+        .risk-bar { height: 12px; background: #e5e7eb; border-radius: 6px; margin: 12px 0; overflow: hidden; }
+        .risk-bar-fill { height: 100%; border-radius: 6px; transition: width 0.5s; }
+        .finding-card { background: white; border-radius: 12px; padding: 20px; margin: 12px 0; box-shadow: 0 2px 8px rgba(0,0,0,0.06); border-left: 4px solid #ccc; }
+        .finding-card.critical { border-left-color: #dc2626; }
+        .finding-card.high { border-left-color: #ea580c; }
+        .finding-card.medium { border-left-color: #d97706; }
+        .finding-card.low { border-left-color: #2563eb; }
+        .finding-card.info { border-left-color: #6b7280; }
+        .finding-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
+        .finding-title { font-size: 16px; font-weight: 700; }
+        .severity-badge { padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+        .severity-critical { background: #fef2f2; color: #dc2626; }
+        .severity-high { background: #fff7ed; color: #ea580c; }
+        .severity-medium { background: #fffbeb; color: #d97706; }
+        .severity-low { background: #eff6ff; color: #2563eb; }
+        .severity-info { background: #f3f4f6; color: #6b7280; }
+        .finding-detail { font-size: 13px; margin: 8px 0; }
+        .finding-detail strong { color: #374151; }
+        .code-block { background: #1e1e2e; color: #cdd6f4; padding: 12px 16px; border-radius: 8px; font-family: 'Consolas', 'Courier New', monospace; font-size: 13px; margin: 8px 0; overflow-x: auto; white-space: pre; }
+        .remediation-box { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 12px 16px; margin-top: 12px; }
+        .remediation-box strong { color: #166534; }
+        .ref-tags { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+        .ref-tag { background: #f3f4f6; color: #374151; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+        .section-title { font-size: 20px; font-weight: 700; margin: 32px 0 16px; color: #1a1a2e; }
+        .footer { text-align: center; padding: 24px; color: #6b7280; font-size: 13px; }
+        .no-findings { text-align: center; padding: 60px 20px; background: white; border-radius: 12px; margin: 24px 0; }
+        .no-findings h3 { color: #16a34a; font-size: 24px; }
+        .no-findings p { color: #6b7280; margin-top: 8px; }
+        @media print { body { background: white; } .report-header { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+    </style>
+</head>
+<body>
+    <div class="report-header">
+        <div class="brand">
+            <span>&#128737;</span> SecureLens Security Report
+        </div>
+        <h1>Automated Secure Code Review Report</h1>
+        <p>Scan ID: {{ result.scan_id }} | {{ result.timestamp }}</p>
+    </div>
+
+    <div class="container">
+        <div class="summary-grid">
+            <div class="summary-card total">
+                <div class="number">{{ result.total_findings }}</div>
+                <div class="label">Total Findings</div>
+            </div>
+            <div class="summary-card critical">
+                <div class="number">{{ result.critical }}</div>
+                <div class="label">Critical</div>
+            </div>
+            <div class="summary-card high">
+                <div class="number">{{ result.high }}</div>
+                <div class="label">High</div>
+            </div>
+            <div class="summary-card medium">
+                <div class="number">{{ result.medium }}</div>
+                <div class="label">Medium</div>
+            </div>
+            <div class="summary-card low">
+                <div class="number">{{ result.low }}</div>
+                <div class="label">Low</div>
+            </div>
+            <div class="summary-card info">
+                <div class="number">{{ result.info }}</div>
+                <div class="label">Info</div>
+            </div>
+        </div>
+
+        <div class="meta-section">
+            <h3>Scan Overview</h3>
+            <div class="meta-grid">
+                <div class="meta-item"><strong>Files Scanned:</strong> {{ result.files_scanned }}</div>
+                <div class="meta-item"><strong>Lines Analyzed:</strong> {{ result.total_lines }}</div>
+                <div class="meta-item"><strong>Risk Score:</strong> {{ result.risk_score }}/100</div>
+                <div class="meta-item"><strong>Risk Level:</strong> {{ result.risk_level }}</div>
+            </div>
+            <div class="risk-bar">
+                <div class="risk-bar-fill" style="width: {{ result.risk_score }}%; background: {% if result.risk_score >= 75 %}#dc2626{% elif result.risk_score >= 50 %}#ea580c{% elif result.risk_score >= 25 %}#d97706{% elif result.risk_score > 0 %}#2563eb{% else %}#16a34a{% endif %};"></div>
+            </div>
+        </div>
+
+        {% if result.language_stats %}
+        <div class="meta-section">
+            <h3>Languages Analyzed</h3>
+            <div class="meta-grid">
+                {% for lang, count in result.language_stats.items() %}
+                <div class="meta-item"><strong>{{ lang }}:</strong> {{ count }} file(s)</div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <h2 class="section-title">Detailed Findings</h2>
+
+        {% if result.findings %}
+            {% for finding in result.findings %}
+            <div class="finding-card {{ finding.severity }}">
+                <div class="finding-header">
+                    <span class="finding-title">{{ finding.vulnerability }}</span>
+                    <span class="severity-badge severity-{{ finding.severity }}">{{ finding.severity | upper }}</span>
+                </div>
+                <div class="finding-detail"><strong>Category:</strong> {{ finding.category }}</div>
+                <div class="finding-detail"><strong>File:</strong> {{ finding.file_path }} <strong>(Line {{ finding.line_number }})</strong></div>
+                <div class="finding-detail"><strong>Confidence:</strong> {{ finding.confidence | upper }}</div>
+                <div class="code-block">{{ finding.line_content }}</div>
+                <div class="finding-detail"><strong>Description:</strong> {{ finding.description }}</div>
+                <div class="remediation-box">
+                    <strong>Remediation:</strong> {{ finding.remediation }}
+                </div>
+                <div class="ref-tags">
+                    {% if finding.owasp_ref %}<span class="ref-tag">{{ finding.owasp_ref }}</span>{% endif %}
+                    {% if finding.cwe_id %}<span class="ref-tag">{{ finding.cwe_id }}</span>{% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="no-findings">
+                <h3>No Vulnerabilities Found!</h3>
+                <p>Your code passed all security checks. Keep maintaining secure coding practices.</p>
+            </div>
+        {% endif %}
+    </div>
+
+    <div class="footer">
+        <p>Generated by <strong>SecureLens</strong> - Automated Secure Code Review & Vulnerability Detector</p>
+        <p>Developed by Muhammad Yasir Soomro | ARZ-2026-2LPS</p>
+    </div>
+</body>
+</html>

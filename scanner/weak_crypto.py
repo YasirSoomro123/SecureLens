@@ -1,0 +1,140 @@
+from typing import List
+from scanner.base import BaseScanner
+from scanner.models import Finding
+
+
+class WeakCryptoScanner(BaseScanner):
+    name = "WeakCryptoScanner"
+    category = "Weak Cryptography"
+
+    PATTERNS = [
+        {
+            "pattern": r'''(?i)import\s+md5|from\s+.*md5|MD5\s*\(|md5\s*\(''',
+            "vulnerability": "Weak Hash Algorithm (MD5)",
+            "severity": "high",
+            "confidence": "high",
+            "description": "MD5 is a cryptographically broken hash function. It is vulnerable to collision attacks and should not be used for security purposes.",
+            "remediation": "Use SHA-256 or SHA-3 for general hashing. For password hashing, use bcrypt, scrypt, or Argon2.",
+            "owasp_ref": "A02:2021 - Cryptographic Failures",
+            "cwe_id": "CWE-328",
+        },
+        {
+            "pattern": r'''(?i)import\s+sha1|from\s+.*sha1|SHA1\s*\(|sha1\s*\(''',
+            "vulnerability": "Weak Hash Algorithm (SHA1)",
+            "severity": "high",
+            "confidence": "high",
+            "description": "SHA-1 is cryptographically weak and vulnerable to collision attacks. Google and NIST have deprecated its use for security.",
+            "remediation": "Use SHA-256 or SHA-3 for general hashing. For password hashing, use bcrypt, scrypt, or Argon2.",
+            "owasp_ref": "A02:2021 - Cryptographic Failures",
+            "cwe_id": "CWE-328",
+        },
+        {
+            "pattern": r'''(?i)(?:DES|DES3|TripleDES|Blowfish)\s*[.(]''',
+            "vulnerability": "Weak Encryption Algorithm",
+            "severity": "high",
+            "confidence": "medium",
+            "description": "DES, 3DES, and Blowfish are considered weak encryption algorithms with small key sizes vulnerable to brute-force attacks.",
+            "remediation": "Use AES-256 (Advanced Encryption Standard) for symmetric encryption. It is the current industry standard.",
+            "owasp_ref": "A02:2021 - Cryptographic Failures",
+            "cwe_id": "CWE-327",
+        },
+        {
+            "pattern": r'''(?i)hashlib\.md5\s*\(''',
+            "vulnerability": "Weak Hash (hashlib.md5)",
+            "severity": "high",
+            "confidence": "high",
+            "description": "Using hashlib.md5() for hashing. MD5 is broken and should not be used for any security-sensitive purpose.",
+            "remediation": "Use hashlib.sha256() for general hashing. For passwords, use bcrypt or argon2-cffi library.",
+            "owasp_ref": "A02:2021 - Cryptographic Failures",
+            "cwe_id": "CWE-328",
+        },
+        {
+            "pattern": r'''(?i)hashlib\.sha1\s*\(''',
+            "vulnerability": "Weak Hash (hashlib.sha1)",
+            "severity": "high",
+            "confidence": "high",
+            "description": "Using hashlib.sha1() for hashing. SHA-1 is deprecated for security use due to demonstrated collision attacks.",
+            "remediation": "Use hashlib.sha256() or hashlib.sha3_256() for secure hashing.",
+            "owasp_ref": "A02:2021 - Cryptographic Failures",
+            "cwe_id": "CWE-328",
+        },
+        {
+            "pattern": r'''(?i)(?:RC2|RC4|RC6|ARC4)\s*[.(]''',
+            "vulnerability": "Weak Cipher (RC4/RC2)",
+            "severity": "high",
+            "confidence": "high",
+            "description": "RC4 and RC2 are broken stream/block ciphers. RC4 has known biases and vulnerabilities that make it unsuitable for security.",
+            "remediation": "Use AES-256-GCM for symmetric encryption. It provides both confidentiality and integrity.",
+            "owasp_ref": "A02:2021 - Cryptographic Failures",
+            "cwe_id": "CWE-327",
+        },
+        {
+            "pattern": r'''(?i)ECB\s*[)_,]|mode\s*=\s*ECB|ECB_MODE''',
+            "vulnerability": "Insecure Block Cipher Mode (ECB)",
+            "severity": "high",
+            "confidence": "high",
+            "description": "ECB (Electronic Codebook) mode does not provide adequate confidentiality. Identical plaintext blocks produce identical ciphertext blocks, leaking patterns.",
+            "remediation": "Use AES-GCM or AES-CBC with a random IV. GCM mode is preferred as it provides authenticated encryption.",
+            "owasp_ref": "A02:2021 - Cryptographic Failures",
+            "cwe_id": "CWE-327",
+        },
+        {
+            "pattern": r'''(?i)(?:createHash|createCipher)\s*\(\s*['"]md5['"]\s*\)''',
+            "vulnerability": "Weak Crypto in Node.js (MD5)",
+            "severity": "high",
+            "confidence": "high",
+            "description": "Using MD5 hashing in Node.js crypto module. MD5 is cryptographically broken.",
+            "remediation": "Use crypto.createHash('sha256') for general hashing. Use bcrypt or argon2 for password hashing.",
+            "owasp_ref": "A02:2021 - Cryptographic Failures",
+            "cwe_id": "CWE-328",
+        },
+        {
+            "pattern": r'''(?i)(?:createHash|createCipher)\s*\(\s*['"]sha1['"]\s*\)''',
+            "vulnerability": "Weak Crypto in Node.js (SHA1)",
+            "severity": "high",
+            "confidence": "high",
+            "description": "Using SHA-1 hashing in Node.js crypto module. SHA-1 is deprecated for security use.",
+            "remediation": "Use crypto.createHash('sha256') or 'sha512' for secure hashing.",
+            "owasp_ref": "A02:2021 - Cryptographic Failures",
+            "cwe_id": "CWE-328",
+        },
+        {
+            "pattern": r'''(?i)Math\.random\s*\(''',
+            "vulnerability": "Insecure Random Number Generator",
+            "severity": "medium",
+            "confidence": "medium",
+            "description": "Math.random() is not cryptographically secure. It should not be used for security-sensitive operations like token generation, nonces, or keys.",
+            "remediation": "Use crypto.randomBytes() or crypto.getRandomValues() for cryptographically secure random numbers.",
+            "owasp_ref": "A02:2021 - Cryptographic Failures",
+            "cwe_id": "CWE-338",
+        },
+        {
+            "pattern": r'''(?i)import\s+random\s|random\.randint|random\.choice|random\.random''',
+            "vulnerability": "Insecure Random (Python random module)",
+            "severity": "medium",
+            "confidence": "low",
+            "description": "Python's random module is not cryptographically secure. If used for security purposes (tokens, passwords, nonces), it can be predicted.",
+            "remediation": "Use the secrets module (import secrets) for security-sensitive random values: secrets.token_hex(), secrets.choice().",
+            "owasp_ref": "A02:2021 - Cryptographic Failures",
+            "cwe_id": "CWE-338",
+        },
+        {
+            "pattern": r'''(?i)(?:verify\s*=\s*False|verify_ssl\s*=\s*False|check_hostname\s*=\s*False)''',
+            "vulnerability": "SSL/TLS Verification Disabled",
+            "severity": "high",
+            "confidence": "high",
+            "description": "SSL/TLS certificate verification is disabled. This makes the application vulnerable to man-in-the-middle attacks.",
+            "remediation": "Always enable SSL/TLS certificate verification. Use proper CA certificates for custom/internal CAs.",
+            "owasp_ref": "A02:2021 - Cryptographic Failures",
+            "cwe_id": "CWE-295",
+        },
+    ]
+
+    def scan_file(self, file_path: str, content: str, language: str) -> List[Finding]:
+        return self._search_patterns(
+            self.PATTERNS, content, file_path, language,
+            "Weak Cryptography", "high",
+            "Weak or insecure cryptographic implementation detected.",
+            "Use strong, modern cryptographic algorithms (AES-256, SHA-256, bcrypt).",
+            "A02:2021 - Cryptographic Failures", "CWE-327",
+        )
